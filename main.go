@@ -22,6 +22,8 @@ func main() {
 	}
 }
 
+var rc = getRedisClient()
+
 type Photo struct {
 	AlbumID      int    `json:"alumniId"`
 	ID           int    `json:"id"`
@@ -58,11 +60,6 @@ func GetAllPhotosWithoutCache(c echo.Context) error {
 func GetAllPhotosWithCache(c echo.Context) error {
 	ctx := context.Background()
 	photos := []Photo{}
-	rc := redis.NewClient(&redis.Options{
-		Addr: "localhost:9876",
-		DB:   0,
-	})
-	defer rc.Close()
 
 	client := http.DefaultClient
 	req, err := http.NewRequest(http.MethodGet, "https://jsonplaceholder.typicode.com/photos", nil)
@@ -71,7 +68,6 @@ func GetAllPhotosWithCache(c echo.Context) error {
 		return sendErr(c, err)
 	}
 
-	// return data from chache when key exist
 	resCache, err := rc.Get(ctx, "photos").Result()
 	if err != nil {
 		if !errors.Is(err, redis.Nil) {
@@ -91,6 +87,8 @@ func GetAllPhotosWithCache(c echo.Context) error {
 			"data": photos,
 		})
 	}
+
+	defer rc.Close()
 
 	res, err := client.Do(req)
 	if err != nil {
